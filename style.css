@@ -40,6 +40,7 @@
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s ease;
+    position: relative;
 }
 
 .category-btn:hover {
@@ -50,6 +51,20 @@
 .category-btn.active {
     background: #007acc;
     color: #fff;
+}
+
+/* Style for superscript indicators */
+.category-btn::after {
+    content: attr(data-superscript);
+    color: #00bfff;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 6px;
+    vertical-align: super;
+}
+
+.category-btn.active::after {
+    color: #87ceeb;
 }
 
 #unicode-search {
@@ -103,7 +118,7 @@
 .unicode-symbol {
     font-size: 20px;
     font-weight: bold;
-    color: #fff;
+    color: #00bfff;
     min-width: 40px;
     text-align: center;
 }

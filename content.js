@@ -35,11 +35,11 @@ function createModalContent() {
     modal.innerHTML = `
         <div class="unicode-picker-container">
             <div class="unicode-picker-categories">
-                <button class="category-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all" data-shortcut="1">All¹</button>
-                <button class="category-btn ${currentCategory === 'accented' ? 'active' : ''}" data-category="accented" data-shortcut="2">Accented²</button>
-                <button class="category-btn ${currentCategory === 'math' ? 'active' : ''}" data-category="math" data-shortcut="3">Math³</button>
-                <button class="category-btn ${currentCategory === 'punctuation' ? 'active' : ''}" data-category="punctuation" data-shortcut="4">Punctuation⁴</button>
-                <button class="category-btn ${currentCategory === 'symbols' ? 'active' : ''}" data-category="symbols" data-shortcut="5">Symbols⁵</button>
+                <button class="category-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all" data-shortcut="1" data-superscript="¹">All</button>
+                <button class="category-btn ${currentCategory === 'accented' ? 'active' : ''}" data-category="accented" data-shortcut="2" data-superscript="²">Accented</button>
+                <button class="category-btn ${currentCategory === 'math' ? 'active' : ''}" data-category="math" data-shortcut="3" data-superscript="³">Math</button>
+                <button class="category-btn ${currentCategory === 'punctuation' ? 'active' : ''}" data-category="punctuation" data-shortcut="4" data-superscript="⁴">Punctuation</button>
+                <button class="category-btn ${currentCategory === 'symbols' ? 'active' : ''}" data-category="symbols" data-shortcut="5" data-superscript="⁵">Symbols</button>
             </div>
             <input type="text" id="unicode-search" placeholder="Search characters... (try 'c' for ç, 'sp' for Spanish)" autocomplete="off">
             <div id="unicode-list"></div>
@@ -172,14 +172,26 @@ function filterCharacters() {
             // Default alphabetical sort
             return aName.localeCompare(bName);
         });
+    } else {
+        // Sort by usage for final ordering (applies to all categories including 'all')
+        chrome.storage.local.get(['usageStats'], (data) => {
+            const usageStats = data.usageStats || {};
+            chars.sort((a, b) => (usageStats[b.symbol] || 0) - (usageStats[a.symbol] || 0));
+            filteredChars = chars;
+            selectedIndex = 0;
+            renderList(filteredChars);
+        });
+        return; // Exit early since we're handling async sorting
     }
     
-    // Sort by usage for final ordering
-    chrome.storage.local.get(null, (data) => {
-        if (!query) {
-            // Only sort by usage when no search query
-            chars.sort((a, b) => (data[b.symbol] || 0) - (data[a.symbol] || 0));
-        }
+    // For search queries, still apply usage sorting as secondary criteria
+    chrome.storage.local.get(['usageStats'], (data) => {
+        const usageStats = data.usageStats || {};
+        // Secondary sort by usage for items with same relevance
+        chars.sort((a, b) => {
+            // Keep the relevance sorting we already did, but add usage as tiebreaker
+            return (usageStats[b.symbol] || 0) - (usageStats[a.symbol] || 0);
+        });
         filteredChars = chars;
         selectedIndex = 0;
         renderList(filteredChars);
