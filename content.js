@@ -83,13 +83,28 @@ function insertCharacter(symbol) {
     const activeEl = originalActiveElement;
     if (!activeEl || (activeEl.tagName !== 'TEXTAREA' && activeEl.tagName !== 'INPUT' && !activeEl.isContentEditable)) return;
 
-    const start = activeEl.selectionStart;
-    const end = activeEl.selectionEnd;
     if (activeEl.value !== undefined) {
+        // Handle input and textarea elements
+        const start = activeEl.selectionStart || 0;
+        const end = activeEl.selectionEnd || 0;
         activeEl.value = activeEl.value.substring(0, start) + symbol + activeEl.value.substring(end);
         activeEl.selectionStart = activeEl.selectionEnd = start + symbol.length;
-    } else {
-        document.execCommand('insertText', false, symbol);
+        activeEl.focus();
+    } else if (activeEl.isContentEditable) {
+        // Handle contentEditable elements
+        activeEl.focus();
+        if (document.execCommand) {
+            document.execCommand('insertText', false, symbol);
+        } else {
+            // Fallback for newer browsers where execCommand is deprecated
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(symbol));
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
     }
     activeEl.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -110,7 +125,7 @@ function handleKeyDown(e) {
         e.preventDefault();
         selectedIndex = (selectedIndex - 1 + filteredChars.length) % filteredChars.length;
         renderList(filteredChars);
-    } else if (e.key === 'Enter' || e.key === ' ') {
+    } else if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 32) {
         e.preventDefault();
         if (filteredChars.length > 0) selectChar(filteredChars[selectedIndex].symbol);
     } else if (e.key === 'Escape') {
