@@ -127,75 +127,122 @@ function filterCharacters() {
             const aliasMatch = char.aliases && char.aliases.some(alias => 
                 alias.toLowerCase().includes(query)
             );
-            return nameMatch || aliasMatch;
-        });
-        
-        // Sort by relevance: exact matches first, then partial matches
-        chars.sort((a, b) => {
-            const aName = a.name.toLowerCase();
-            const bName = b.name.toLowerCase();
-            const aAliases = a.aliases || [];
-            const bAliases = b.aliases || [];
             
-            // Check for exact symbol matches first (e.g., "s" matches "s" character)
-            const aExactSymbol = a.symbol.toLowerCase() === query;
-            const bExactSymbol = b.symbol.toLowerCase() === query;
-            if (aExactSymbol && !bExactSymbol) return -1;
-            if (bExactSymbol && !aExactSymbol) return 1;
-            
-            // Check for exact alias matches (e.g., "s" in aliases)
-            const aExactAlias = aAliases.some(alias => alias.toLowerCase() === query);
-            const bExactAlias = bAliases.some(alias => alias.toLowerCase() === query);
-            if (aExactAlias && !bExactAlias) return -1;
-            if (bExactAlias && !aExactAlias) return 1;
-            
-            // Check for name starting with query
-            const aNameStarts = aName.startsWith(query);
-            const bNameStarts = bName.startsWith(query);
-            if (aNameStarts && !bNameStarts) return -1;
-            if (bNameStarts && !aNameStarts) return 1;
-            
-            // Check for alias starting with query
-            const aAliasStarts = aAliases.some(alias => alias.toLowerCase().startsWith(query));
-            const bAliasStarts = bAliases.some(alias => alias.toLowerCase().startsWith(query));
-            if (aAliasStarts && !bAliasStarts) return -1;
-            if (bAliasStarts && !aAliasStarts) return 1;
-            
-            // For progressive search (e.g., "sp" for Spanish), prioritize language-specific matches
-            if (query.length >= 2) {
-                const aLanguageMatch = aName.includes(query);
-                const bLanguageMatch = bName.includes(query);
-                if (aLanguageMatch && !bLanguageMatch) return -1;
-                if (bLanguageMatch && !aLanguageMatch) return 1;
+            // Check for Unicode code matches
+            let codeMatch = false;
+            if (char.code) {
+                const charCode = char.code.toLowerCase();
+                // Match full format "u+xxxx"
+                if (charCode.includes(query)) {
+                    codeMatch = true;
+                }
+                // Match hex code only (e.g., "00fc" matches "U+00FC")
+                else if (query.length >= 2 && /^[0-9a-f]+$/.test(query)) {
+                    const hexPart = charCode.replace('u+', '');
+                    if (hexPart.includes(query)) {
+                        codeMatch = true;
+                    }
+                }
             }
             
-            // Default alphabetical sort
-            return aName.localeCompare(bName);
+            return nameMatch || aliasMatch || codeMatch;
         });
-    } else {
-        // Sort by usage for final ordering (applies to all categories including 'all')
+        
+        // Sort by relevance first, then by usage as tiebreaker
         chrome.storage.local.get(['usageStats'], (data) => {
             const usageStats = data.usageStats || {};
-            chars.sort((a, b) => (usageStats[b.symbol] || 0) - (usageStats[a.symbol] || 0));
+            
+            chars.sort((a, b) => {
+                const aName = a.name.toLowerCase();
+                const bName = b.name.toLowerCase();
+                const aAliases = a.aliases || [];
+                const bAliases = b.aliases || [];
+                
+                // Check for exact symbol matches first (e.g., "s" matches "s" character)
+                const aExactSymbol = a.symbol.toLowerCase() === query;
+                const bExactSymbol = b.symbol.toLowerCase() === query;
+                if (aExactSymbol && !bExactSymbol) return -1;
+                if (bExactSymbol && !aExactSymbol) return 1;
+                
+                // Check for exact Unicode code matches (e.g., "u+00fc" or "00fc")
+                let aCodeMatch = false;
+                let bCodeMatch = false;
+                if (a.code && b.code) {
+                    const aCharCode = a.code.toLowerCase();
+                    const bCharCode = b.code.toLowerCase();
+                    
+                    // Check for exact match with full format or hex only
+                    aCodeMatch = aCharCode === query || 
+                                (query.length >= 2 && /^[0-9a-f]+$/.test(query) && aCharCode.replace('u+', '') === query);
+                    bCodeMatch = bCharCode === query || 
+                                (query.length >= 2 && /^[0-9a-f]+$/.test(query) && bCharCode.replace('u+', '') === query);
+                }
+                if (aCodeMatch && !bCodeMatch) return -1;
+                if (bCodeMatch && !aCodeMatch) return 1;
+                
+                // Check for exact alias matches (e.g., "s" in aliases)
+                const aExactAlias = aAliases.some(alias => alias.toLowerCase() === query);
+                const bExactAlias = bAliases.some(alias => alias.toLowerCase() === query);
+                if (aExactAlias && !bExactAlias) return -1;
+                if (bExactAlias && !aExactAlias) return 1;
+                
+                // Check for name starting with query
+                const aNameStarts = aName.startsWith(query);
+                const bNameStarts = bName.startsWith(query);
+                if (aNameStarts && !bNameStarts) return -1;
+                if (bNameStarts && !aNameStarts) return 1;
+                
+                // Check for alias starting with query
+                const aAliasStarts = aAliases.some(alias => alias.toLowerCase().startsWith(query));
+                const bAliasStarts = bAliases.some(alias => alias.toLowerCase().startsWith(query));
+                if (aAliasStarts && !bAliasStarts) return -1;
+                if (bAliasStarts && !aAliasStarts) return 1;
+                
+                // For progressive search (e.g., "sp" for Spanish), prioritize language-specific matches
+                if (query.length >= 2) {
+                    const aLanguageMatch = aName.includes(query);
+                    const bLanguageMatch = bName.includes(query);
+                    if (aLanguageMatch && !bLanguageMatch) return -1;
+                    if (bLanguageMatch && !aLanguageMatch) return 1;
+                }
+                
+                // Use usage stats as tiebreaker for items with same relevance
+                const aUsage = usageStats[a.symbol] || 0;
+                const bUsage = usageStats[b.symbol] || 0;
+                if (aUsage !== bUsage) {
+                    return bUsage - aUsage;
+                }
+                
+                // Final fallback: alphabetical sort
+                return aName.localeCompare(bName);
+            });
+            
             filteredChars = chars;
             selectedIndex = 0;
             renderList(filteredChars);
         });
-        return; // Exit early since we're handling async sorting
-    }
-    
-    // For search queries, still apply usage sorting as secondary criteria
-    chrome.storage.local.get(['usageStats'], (data) => {
-        const usageStats = data.usageStats || {};
-        // Secondary sort by usage for items with same relevance
-        chars.sort((a, b) => {
-            // Keep the relevance sorting we already did, but add usage as tiebreaker
-            return (usageStats[b.symbol] || 0) - (usageStats[a.symbol] || 0);
+    } else {
+        // No search query: sort by usage frequency first, then alphabetically
+        chrome.storage.local.get(['usageStats'], (data) => {
+            const usageStats = data.usageStats || {};
+            chars.sort((a, b) => {
+                const aUsage = usageStats[a.symbol] || 0;
+                const bUsage = usageStats[b.symbol] || 0;
+                
+                // Primary sort by usage frequency
+                if (aUsage !== bUsage) {
+                    return bUsage - aUsage;
+                }
+                
+                // Secondary sort alphabetically for items with same usage
+                return a.name.localeCompare(b.name);
+            });
+            
+            filteredChars = chars;
+            selectedIndex = 0;
+            renderList(filteredChars);
         });
-        filteredChars = chars;
-        selectedIndex = 0;
-        renderList(filteredChars);
-    });
+    }
 }
 
 function handleKeyDown(e) {

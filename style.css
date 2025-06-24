@@ -57,7 +57,7 @@
 .category-btn::after {
     content: attr(data-superscript);
     color: #00bfff;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     margin-left: 6px;
     vertical-align: super;
