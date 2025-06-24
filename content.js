@@ -35,18 +35,16 @@ function createModalContent() {
     modal.innerHTML = `
         <div class="unicode-picker-container">
             <div class="unicode-picker-categories">
-                <button class="category-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all" data-shortcut="1">All (Alt+1)</button>
-                <button class="category-btn ${currentCategory === 'accented' ? 'active' : ''}" data-category="accented" data-shortcut="2">Accented (Alt+2)</button>
-                <button class="category-btn ${currentCategory === 'math' ? 'active' : ''}" data-category="math" data-shortcut="3">Math (Alt+3)</button>
-                <button class="category-btn ${currentCategory === 'punctuation' ? 'active' : ''}" data-category="punctuation" data-shortcut="4">Punctuation (Alt+4)</button>
-                <button class="category-btn ${currentCategory === 'symbols' ? 'active' : ''}" data-category="symbols" data-shortcut="5">Symbols (Alt+5)</button>
-                <button class="category-btn ${currentCategory === 'fractions' ? 'active' : ''}" data-category="fractions" data-shortcut="6">Fractions (Alt+6)</button>
-                <button class="category-btn ${currentCategory === 'ligatures' ? 'active' : ''}" data-category="ligatures" data-shortcut="7">Ligatures (Alt+7)</button>
+                <button class="category-btn ${currentCategory === 'all' ? 'active' : ''}" data-category="all" data-shortcut="1">All¹</button>
+                <button class="category-btn ${currentCategory === 'accented' ? 'active' : ''}" data-category="accented" data-shortcut="2">Accented²</button>
+                <button class="category-btn ${currentCategory === 'math' ? 'active' : ''}" data-category="math" data-shortcut="3">Math³</button>
+                <button class="category-btn ${currentCategory === 'punctuation' ? 'active' : ''}" data-category="punctuation" data-shortcut="4">Punctuation⁴</button>
+                <button class="category-btn ${currentCategory === 'symbols' ? 'active' : ''}" data-category="symbols" data-shortcut="5">Symbols⁵</button>
             </div>
             <input type="text" id="unicode-search" placeholder="Search characters... (try 'c' for ç, 'sp' for Spanish)" autocomplete="off">
             <div id="unicode-list"></div>
             <div class="unicode-picker-help">
-                Use ↑↓ or j/k to navigate, Enter/Space to select, Esc to close, Alt+1-7 for categories
+                Use ↑↓ or j/k to navigate, Enter/Space to select, Esc to close, Alt+1-5 for categories
             </div>
         </div>
     `;
@@ -97,9 +95,9 @@ function switchToCategory(category) {
 
 function handleGlobalKeyDown(e) {
     // Handle Alt + number shortcuts for categories
-    if (e.altKey && e.key >= '1' && e.key <= '7') {
+    if (e.altKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault();
-        const categories = ['all', 'accented', 'math', 'punctuation', 'symbols', 'fractions', 'ligatures'];
+        const categories = ['all', 'accented', 'math', 'punctuation', 'symbols'];
         const categoryIndex = parseInt(e.key) - 1;
         if (categoryIndex < categories.length) {
             switchToCategory(categories[categoryIndex]);
